@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      var srcField;
+      
+      var openFile = function (event) {
+        srcField = event.srcElement.id;
+
+        var input = event.target;
+
+        var reader = new FileReader();
+        reader.onload = function () {
+            var buffer = reader.result;
+            let view = new Uint8Array(buffer);
+
+            var canvas = document.getElementById("canvas");
+            var ctx = canvas.getContext("2d");
+
+            var format;
+            var width;
+            var height;
+            var cwidth;
+
+            if (view[0]==71) {
+              format = "G";
+              width=640;
+              height=400;
+              cwidth=79;
+            } else if (view[0] == 66)  {
+              format = "B";
+              width=320;
+              height=200;
+              cwidth=39;
+            } else  {
+              alert("Not a Scanntronik GB or BS file!");
+              return;
+            }
+
+            var target = ctx.createImageData(width,height);
+            //var target = new Uint8ClampedArray(buffer.byteLength*4);
+
+            //i=input address
+            //t= target address
+            //l= target line (0-7)
+            //var s=(srcField=='fileBottom') ? 32000*4*8 : 0;
+            var s = 0;
+            var o=0;
+            var l=0;
+            var c=0;
+            var i=1;
+            var t=0;
+            
+            while (t < 32000*4*8 && t < width*height*4) {
+
+              if (view[i] == 155) {
+                var count = view[i+1]+view[i+2]*256;
+                var value = view[i+3];
+                
+                for (m=0; m<count; m++) {
+                  t=s+o+c*32+l*(width*4);
+                  //console.log("o="+o+",i="+i+"l="+l+",t="+t+",v="+value);
+                  plotByte(value, target.data, t);
+                  l=l+1;
+
+                  if (l>7) {
+                    l=0;
+                    c++;
+
+                    if (c>cwidth) {
+                      c=0;
+                      o=o+(width*4*8);
+                    }
+                  }
+
+                }
+
+                i+=4;
+
+              } else {
+                var value = view[i];
+                t=s+o+c*32+l*(width*4);
+                //console.log("o="+o+",i="+i+"l="+l+",t="+t+",v="+value);
+                plotByte(value, target.data, t);
+                l=l+1;
+
+                if (l>7) {
+                  l=0;
+                  c++;
+
+                  if (c>cwidth) {
+                    c=0;
+                    o=o+(width*4*8);
+                  }
+                }
+                i++;
+              }
+            }
+
+            var node = document.getElementById("output");
+            node.innerText = view[0];
+
+            ctx.putImageData(target,0,(srcField == 'fileBottom')?400:0);
+            console.log("done");
+        };
+        reader.readAsArrayBuffer(input.files[0]);
+      };
+
+      /**
+       * plotting one byte of input data results in 8 monochrome pixels to be written.
+       * each monochrome pixel is 4 bytes (rgba).
+       */
+      var plotByte = function(value, target, offset) {
+        os=offset;
+
+        if (srcField == 'fileBottom' && os > 64000*4*8) {
+          //console.log('skipping plotByte, offset is larger than 64000 for bottom file');
+          return;
+        } else if (srcField == 'fileTop' && os > 32000*4*8) {
+          //console.log('skipping plotByte, offset is larger than 32000 for top file');
+          return;
+        }
+
+        for (p=0; p<8; p++) {
+          v = ((value & Math.pow(2,7-p)) > 0)?0:255;
+
+          target[os] = v;
+          target[os+1] = v;
+          target[os+2] = v;
+          target[os+3] = 255;
+          
+          os=os+4;
+        }
+      };
+    </script>
+  </head>
+  <body>
+    <h1>Render GB and BS files to Canvas</h1>
+    <label for="fileTop">Top GB File</label><input type="file" id="fileTop" onchange="openFile(event)" /><br />
+    <label for="fileBottom">Bottom GB File</label><input type="file" id="fileBottom" onchange="openFile(event)" /><br />
+    <canvas id="canvas" width="640" height="800" style="border: 1px dotted purple"></canvas>
+    <div id="output">...</div>
+  </body>
+</html>
