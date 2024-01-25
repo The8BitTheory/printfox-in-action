@@ -38,7 +38,6 @@
             }
 
             var target = ctx.createImageData(width,height);
-            //var target = new Uint8ClampedArray(buffer.byteLength*4);
 
             //i=input address
             //t= target address
@@ -51,7 +50,7 @@
             var i=1;
             var t=0;
             
-            while (t < 32000*4*8 && t < width*height*4) {
+            while (i < buffer.byteLength-4 && t < width*height*4) {
 
               if (view[i] == 155) {
                 var count = view[i+1]+view[i+2]*256;
@@ -59,7 +58,6 @@
                 
                 for (m=0; m<count; m++) {
                   t=s+o+c*32+l*(width*4);
-                  //console.log("o="+o+",i="+i+"l="+l+",t="+t+",v="+value);
                   plotByte(value, target.data, t);
                   l=l+1;
 
@@ -80,7 +78,6 @@
               } else {
                 var value = view[i];
                 t=s+o+c*32+l*(width*4);
-                //console.log("o="+o+",i="+i+"l="+l+",t="+t+",v="+value);
                 plotByte(value, target.data, t);
                 l=l+1;
 
@@ -101,7 +98,7 @@
             node.innerText = view[0];
 
             ctx.putImageData(target,0,(srcField == 'fileBottom')?400:0);
-            console.log("done");
+            console.log("done. i="+i+",t="+t);
         };
         reader.readAsArrayBuffer(input.files[0]);
       };
@@ -112,14 +109,6 @@
        */
       var plotByte = function(value, target, offset) {
         os=offset;
-
-        if (srcField == 'fileBottom' && os > 64000*4*8) {
-          //console.log('skipping plotByte, offset is larger than 64000 for bottom file');
-          return;
-        } else if (srcField == 'fileTop' && os > 32000*4*8) {
-          //console.log('skipping plotByte, offset is larger than 32000 for top file');
-          return;
-        }
 
         for (p=0; p<8; p++) {
           v = ((value & Math.pow(2,7-p)) > 0)?0:255;
@@ -138,7 +127,7 @@
     <h1>Render GB and BS files to Canvas</h1>
     <label for="fileTop">Top GB File</label><input type="file" id="fileTop" onchange="openFile(event)" /><br />
     <label for="fileBottom">Bottom GB File</label><input type="file" id="fileBottom" onchange="openFile(event)" /><br />
-    <canvas id="canvas" width="640" height="800" style="border: 1px dotted purple"></canvas>
     <div id="output">...</div>
+    <canvas id="canvas" width="640" height="800" style="border: 1px dotted purple"></canvas>
   </body>
 </html>
